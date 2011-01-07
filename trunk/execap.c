@@ -24,7 +24,7 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
-#include <pcap.h>
+#include <pcap/pcap.h>
 
 #include <openssl/md5.h>
 
