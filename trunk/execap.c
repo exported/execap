@@ -98,6 +98,11 @@ struct connection {
 #define MAX_CONN_LEN 2 * 1024 * 1024
 #define MAX_CONN_FRAG 6
 #define MAX_EXE_DEPTH 4096
+#define MAX_SEQ_DIST 32 * 1024 * 1024
+
+#define EXCEEDS_DIST(a, b) (((((a) - (b)) & 0xFFFFFFFF) > MAX_SEQ_DIST) & \
+			    ((((a) - (b)) & 0xFFFFFFFF) <		\
+			     (0xFFFFFFFF - MAX_SEQ_DIST)))
 
 #define MAX_LOG_LINE 256
 #define MAX_FILE_LEN 256
@@ -305,6 +310,7 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
   size_t overlap;
   u_char insert = 1;
   u_short tree_num;
+  u_char handle_case = 0;
 
   /* The EXE search vars */
   u_char * next_offset;
@@ -447,6 +453,27 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
     pos = 0;
     while (*pp_working_packet != NULL) {
 
+      /* ===
+       * It isn't safe to pass sequences that exceed MAX_SEQ_DIST
+       * to GT_32() and the like.  Make sure we don't since the rest
+       * of the code assumes the GT/LT checks are always correct
+       * and if they aren't a segfault could occur.  See issue 19 for
+       * more details.
+       * ===
+       */
+      if (EXCEEDS_DIST(thisseq, (*pp_working_packet)->seq)) {
+
+	/* fprintf(stderr, "Sequence exceeds max dist, abandoning\n"); */
+
+	abandon_packets((*conn_probe)->datalist);
+	(*conn_probe)->datalist = NULL;
+	(*conn_probe)->abandon = 1;
+	insert = 0;
+	
+	break;
+      }
+
+
       /* === 
        * If there are next packets and this one eclipses them then delete
        * === */
@@ -499,6 +526,7 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
 	(*pp_working_packet)->searched = 0;
 
 	insert = 0;
+	handle_case = 1;
 	break;
       } /* end eclipse */
 
@@ -544,6 +572,7 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
 	(*conn_probe)->total_data += (datalen - overlap);
 
 	insert = 0;
+	handle_case = 2;
 	break;
       } /* END starts before */
 
@@ -587,6 +616,7 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
 	(*conn_probe)->total_data += (datalen - overlap);
 
 	insert = 0;
+	handle_case = 3;
 	break;
       } /* end after working packing */
 
@@ -621,7 +651,8 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
 
 
     /* We might need to insert a packet instead */
-    if ((pp_working_packet != NULL) && (insert == 1)) {
+    if ((pp_working_packet != NULL) && (insert == 1) &&
+	((*conn_probe)->abandon == 0)) {
 
       /* We can't combine with anything, insert infront of working packet */
       cur_packet.next = *pp_working_packet;
@@ -653,6 +684,8 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
       /* Track this data */
       (*conn_probe)->total_data += datalen;
 
+	handle_case = 4;
+
     } /* END insert packet */
 
     
@@ -661,7 +694,7 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
 
     
     /* Find the packets to merge */
-    while (*pp_working_packet != NULL) {
+    while ((*pp_working_packet != NULL) && ((*conn_probe)->abandon == 0)) {
       pp_next_packet = &((*pp_working_packet)->next);
 
       while (((*pp_next_packet) != NULL) &&
