@@ -11,11 +11,14 @@ LDLIBS=-lpcap -lssl
 main: execap
 
 
-execap: execap.o pavl.o
-	$(CC) $(CFLAGS) execap.o pavl.o -o execap ${LDLIBS}
+execap: execap.o findexe.o pavl.o
+	$(CC) $(CFLAGS) execap.o findexe.o pavl.o -o execap ${LDLIBS}
 
-execap.o: execap.c
+execap.o: execap.c execap.h
 	$(CC) $(CFLAGS) -c execap.c
+
+findexe.o: findexe.c execap.h
+	$(CC) $(CFLAGS) -c findexe.c
 
 pavl.o: pavl.c pavl.h
 	$(CC) $(CFLAGS) -c pavl.c
