@@ -94,11 +94,6 @@ extern int optind, opterr, optopt;
  * Macros
  * ===
  */
-#define SWAP_2(x) ((((x) & 0xff) << 8) | ((unsigned short)(x) >> 8))
-#define SWAP_4(x) (((x) << 24) |		\
-		   (((x) << 8) & 0x00ff0000) |	\
-		   (((x) >> 8) & 0x0000ff00) |	\
-		   ((x) >> 24))
 
 /* This macro checks if A > B in the strange world of 32 bit integer wrap
  * For example, 5 > 2**32 - 1 is true

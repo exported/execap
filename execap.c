@@ -283,7 +283,7 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
 
 
   /* Make sure this capture wasn't truncated */
-  iplen = SWAP_2(iph.ip_len);
+  iplen = ntohs(iph.ip_len);
   if ((iplen + ETH_HDR_SIZE > header->caplen) || (iplen < iphlen)
       || ((iplen - iphlen) < MIN_TCP_HDR_SIZE)) {
     /*fprintf(stderr, "Got truncated IP packet (IP size=%u; caplen=%u)\n",
@@ -370,7 +370,7 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
 
   /* If we have data to insert, do it */
   if ((datalen > 0) && ((*conn_probe)->abandon == 0)) {
-    thisseq = SWAP_4(tcph.th_seq);
+    thisseq = ntohl(tcph.th_seq);
 
     /* Find the packet spot or merge */
     pp_last_packet = NULL;
@@ -717,13 +717,13 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
 		 time_detail.tm_year + 1900, time_detail.tm_mon + 1,
 		 time_detail.tm_mday, time_detail.tm_hour, time_detail.tm_min,
 		 time_detail.tm_sec, inet_ntoa((*conn_probe)->ip_src),
-		 SWAP_2((*conn_probe)->th_sport));
+		 ntohs((*conn_probe)->th_sport));
 
       exe_log_len +=
 	snprintf(exe_log + exe_log_len, MAX_LOG_LINE - exe_log_len,
 		 " -> %s:%u (Size=%u; MD5=%s)\n",
 		 inet_ntoa((*conn_probe)->ip_dst),
-		 SWAP_2((*conn_probe)->th_dport),
+		 ntohs((*conn_probe)->th_dport),
 		 (unsigned int)exe_size, exe_md5);
 
       /* Terminate the string */
