@@ -79,7 +79,6 @@ struct hash_node_tree {
 struct hash_node_tree connection_tree[TREES];
 
 #define PURGE_RATE 10 /* Seconds */
-time_t last_purge = 0;
 
 /* Some packet statistics */
 time_t stats_start, stats_end;
