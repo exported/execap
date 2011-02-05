@@ -3,10 +3,10 @@
 #include "pavl.h"
 
 
-int main(void) {
+int main(int argc, char * const argv[]) {
 
   /* === PCAP vars === */
-  char dev[] = "eth1"; /* The device to sniff on */
+  char * dev = NULL; /* The device to sniff on */
   char pc_errbuf[PCAP_ERRBUF_SIZE]; /* Error string */
   char filter_str[] = "ip and tcp"; /* The filter expression */
   struct bpf_program filter_prog;/* The compiled filter */
@@ -22,8 +22,57 @@ int main(void) {
   char log_file[MAX_FILE_LEN];
   size_t log_file_len;
 
+  /* Argument parsing vars */
+  int arg_val;
+
   /* == Scratch vars === */
   int i;
+
+
+  /* ===
+   * Handle command line parameters
+   * ===
+   */
+  struct option long_options[] = {
+    {"help", no_argument, 0, 'h'},
+    {"version", no_argument, 0, 'V'},
+    {"verbose", no_argument, 0, 'v'},
+    {"interface", required_argument, 0, 'i'},
+    {0, 0, 0, 0}
+  };
+
+  /* getopt_long() loop */
+  while ((arg_val =
+	  getopt_long(argc, argv, "i:hVv", long_options, NULL)) != EOF) {
+    
+    if (arg_val == 'h') {
+      printf("execap: help usage\n");
+
+      return 0;
+    }
+    else if (arg_val == 'V') {
+      printf("execap: testing version\n");
+
+      return 0;
+    }
+    else if (arg_val == 'v') {
+      fprintf(stderr, "Turning on verbose alerts\n");
+    }
+    else if (arg_val == 'i') {
+      fprintf(stderr, "Going to listen on interface %s\n", optarg);
+
+      dev = strdup(optarg);
+    }
+  }
+
+
+  /* Make sure the arguments we need were provided */
+  if (dev == NULL) {
+    fprintf(stderr, "A listening interface must be provided with -i\n");
+
+    return 1;
+  }
+
 
   /* Open the log file handle */
   log_file_len = snprintf(log_file, MAX_FILE_LEN,
@@ -38,7 +87,7 @@ int main(void) {
 
   /* Get the netmask and IP from the device */
   if (pcap_lookupnet(dev, &net, &mask, pc_errbuf) != 0) {
-    fprintf(stderr, "PCAP: Couldn't get netmask for device %s: %s\n",
+    fprintf(stderr, "PCAP: Couldn't get netmask for device %s\n",
 	    dev, pc_errbuf);
     net = 0;
     mask = 0;
@@ -149,6 +198,9 @@ int main(void) {
   /* And flush and close our log file */
   fsync(log_fd);
   close(log_fd);
+
+  /* Free some memory */
+  free(dev);
 
   return 0;
 }
