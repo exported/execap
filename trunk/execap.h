@@ -1,9 +1,9 @@
-
 #ifndef EXECAP_H
 #define EXECAP_H 1
 
+
 /* ===
- * Includes
+ * General includes
  * ===
  */
 #include <stdlib.h>
@@ -15,7 +15,14 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <getopt.h>
+#include <openssl/md5.h>
 
+
+/* ===
+ * Network includes
+ * ===
+ */
 /* We want to favor the BSD structs over the Linux ones */
 #ifndef __USE_BSD
 #define __USE_BSD
@@ -31,7 +38,6 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <pcap/pcap.h>
-#include <openssl/md5.h>
 
 
 /* ===
@@ -69,6 +75,10 @@ time_t last_purge = 0;
 time_t stats_start, stats_end;
 unsigned long long stats_packets = 0;
 unsigned long long stats_bytes = 0;
+
+/* The arg parsing vars in getopt */
+extern char *optarg;
+extern int optind, opterr, optopt;
 
 
 /* ===
@@ -146,7 +156,7 @@ struct connection {
  */
 
 /* execap.c */
-int main(void);
+int main(int argc, char * const argv[]);
 void packet_callback(u_char *, const struct pcap_pkthdr *, const u_char *);
 void sig_stop_pcap(int);
 int compare_connections(const void *, const void *, void *);
