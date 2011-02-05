@@ -18,6 +18,11 @@
 #include <getopt.h>
 #include <openssl/md5.h>
 
+/* ===
+ * Threading
+ * ===
+ */
+#include <pthread.h>
 
 /* ===
  * Network includes
@@ -64,9 +69,14 @@
 int log_fd;
 
 pcap_t *pch; /* PCAP handle must be global so signal handler can access it */
+int terminate = 0;
 
 #define TREES 65536
-struct pavl_table *connection_tree[TREES];
+struct hash_node_tree {
+  struct pavl_table *tree;
+  pthread_mutex_t tree_mutex;
+};
+struct hash_node_tree connection_tree[TREES];
 
 #define PURGE_RATE 10 /* Seconds */
 time_t last_purge = 0;
@@ -163,6 +173,7 @@ int compare_connections(const void *, const void *, void *);
 void * copy_connection(const void *, void *);
 void abandon_packets(struct packet_data *);
 void md5_hex(const u_char *, const size_t, u_char *);
+void *thread_connection_reaper(void *);
 
 /* findexe.c */
 extern u_char * find_exe(const u_char *, const size_t, u_char **, size_t *);

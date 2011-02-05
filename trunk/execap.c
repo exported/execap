@@ -22,7 +22,11 @@ int main(int argc, char * const argv[]) {
   char log_file[MAX_FILE_LEN];
   size_t log_file_len;
 
-  /* Argument parsing vars */
+  /* === Thread vars === */
+  pthread_t connection_reaper;
+  int thread_ret;
+
+  /* === Argument parsing vars === */
   int arg_val;
 
   /* == Scratch vars === */
@@ -87,7 +91,7 @@ int main(int argc, char * const argv[]) {
 
   /* Get the netmask and IP from the device */
   if (pcap_lookupnet(dev, &net, &mask, pc_errbuf) != 0) {
-    fprintf(stderr, "PCAP: Couldn't get netmask for device %s\n",
+    fprintf(stderr, "PCAP: Couldn't get netmask for device %s: %s\n",
 	    dev, pc_errbuf);
     net = 0;
     mask = 0;
@@ -163,15 +167,25 @@ int main(int argc, char * const argv[]) {
 
   /* Create the connection trees */
   for (i = 0; i < TREES; i++) {
-    connection_tree[i] = pavl_create(compare_connections, NULL, NULL);
+    connection_tree[i].tree = pavl_create(compare_connections, NULL, NULL);
+    pthread_mutex_init(&(connection_tree[i].tree_mutex), NULL);
   }
   
   /* Start time */
   stats_start = time(NULL);
 
+  /* Before listening, start the connection reaper thread */
+  thread_ret = pthread_create(&connection_reaper, NULL,
+			      thread_connection_reaper, NULL);
+
   /* Now start capturing and handling packets */
   pcap_loop(pch, -1, packet_callback, NULL);
   fprintf(stderr, "\nSignal caught, PCAP loop terminated.\n");
+
+  /* === Stopped listening, must have gotten signal === */
+  fprintf(stderr, "Waiting for threads to finish before exiting...\n");
+  pthread_join(connection_reaper, NULL);
+
 
   /* End time */
   stats_end = time(NULL);
@@ -248,13 +262,6 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
   int exe_fd;
   struct stat file_stat;
   ssize_t write_len;
-
-  /* The purge vars */
-  struct pavl_traverser traverser;
-  struct connection *conn_last;
-  struct connection *conn_cur;
-  unsigned int t_expt, t_count, t_del;
-  int i;
 
   /* Record some basic stats */
   stats_packets++;
@@ -335,25 +342,22 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
 
   tree_num = TREEHASH(conn_copy);
 
-  conn_probe = (struct connection **)pavl_probe(connection_tree[tree_num],
+  /* === *** ACQUIRE TREE LOCK *** === */
+  pthread_mutex_lock(&(connection_tree[tree_num].tree_mutex));
+
+  conn_probe = (struct connection **)pavl_probe(connection_tree[tree_num].tree,
 						conn_copy);
 
   if (conn_probe == NULL) {
     fprintf(stderr, "There was a failure inserting connection into tree.\n");
-    return;
+    goto unlock_and_return;
   }
 
 
   if (*conn_probe == conn_copy) {
-    /* fprintf(stderr, "New connection (%s:%u",
-	    inet_ntoa((*conn_probe)->ip_src), (*conn_probe)->th_sport);
-    fprintf(stderr, " -> %s:%u inserted; connections=%u\n",
-	    inet_ntoa((*conn_probe)->ip_dst), (*conn_probe)->th_dport,
-	    (unsigned int)pavl_count(connection_tree)); */
+    /* Just inserted, nothing to do */
   }
   else {
-    /* fprintf(stderr, "Connection already in tree; connection=%u\n",
-       (unsigned int)pavl_count(connection_tree)); */
 
     /* Update the last seen time */
     (*conn_probe)->last_seen = conn.last_seen;
@@ -584,7 +588,7 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
       /* Allocate our packet data space */
       if ((cur_packet.data = malloc(datalen)) == 0) {
 	fprintf(stderr, "malloc() failed allocating space for data!\n");
-	return;
+	goto unlock_and_return;
       }
       /* Copy our data in */
       memcpy(cur_packet.data, packet + data_offset, datalen);
@@ -700,12 +704,6 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
     /* Did we find an EXE? */
     if (exe_size != 0) {
 
-    /* fprintf(stderr, "New connection (%s:%u",
-	    inet_ntoa((*conn_probe)->ip_src), (*conn_probe)->th_sport);
-    fprintf(stderr, " -> %s:%u inserted; connections=%u\n",
-	    inet_ntoa((*conn_probe)->ip_dst), (*conn_probe)->th_dport,
-	    (unsigned int)pavl_count(connection_tree)); */
-
       /* Get the detailed time info */
       gmtime_r(&cur_time, &time_detail);
 
@@ -787,60 +785,11 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
   }
 
 
-  /* We may need to delete stale connections */
-  if (cur_time - last_purge > PURGE_RATE) {
-    /*
-    fprintf(stderr, "Purge started\n");
-    */
+ unlock_and_return:
 
-    last_purge = cur_time;
+  /* === *** RELEASE TREE LOCK *** === */
+  pthread_mutex_unlock(&(connection_tree[tree_num].tree_mutex));
 
-    for (i = 0; i < TREES; i++) {
-      pavl_t_init(&traverser, connection_tree[i]);
-
-      conn_last = (struct connection *)pavl_t_next(&traverser);
-      conn_cur = (struct connection *)pavl_t_next(&traverser);
-
-      t_expt = connection_tree[i]->pavl_count;
-      t_count = 0;
-      t_del = 0;
-      while (conn_last != NULL) {
-	t_count++;
-      
-	if (cur_time - conn_last->last_seen > PURGE_RATE) {
-
-	  /* Do the deletion */
-	  conn_last = (struct connection *)pavl_delete(connection_tree[i],
-						       conn_last);
-
-	  if (conn_last->datalist != NULL) {
-	    abandon_packets(conn_last->datalist);
-	  }
-
-	  /* Now free connection */
-	  free(conn_last);
-
-	  t_del++;
-	}	  
-
-	/* Move on */
-	conn_last = conn_cur;
-	conn_cur = (struct connection *)pavl_t_next(&traverser);
-      }
-      /*
-	fprintf(stderr, "Purge finished: t_expt=%u, t_del=%u, t_count=%u\n",
-	t_expt, t_del, t_count);
-      */
-    }
-  }
-
-    
-  /* report connections */
-  /* if (connection_tree->pavl_count % 1000 == 0) {
-     fprintf(stderr, "There are now %u connections in the tree\n",
-     (unsigned int)connection_tree->pavl_count);
-     } */
-  
   return;
 }
 
@@ -848,6 +797,7 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
 void sig_stop_pcap(int signo) {
   /* It is dangerous to do much more than this in a signal handler */
   pcap_breakloop(pch);
+  terminate = 1;
 }
 
 
@@ -942,4 +892,77 @@ void md5_hex(const u_char *data, const size_t len, u_char *hexstr) {
   hexstr[32] = '\0';
 
   return;
+}
+
+
+void *thread_connection_reaper(void *arg) {
+
+  /* The reaper vars */
+  struct pavl_traverser traverser;
+  struct connection *conn_last;
+  struct connection *conn_cur;
+  unsigned int t_expt, t_count, t_del;
+  struct timeval sleep_time;
+  time_t cur_time;
+  int i;
+
+  while (terminate == 0) {
+
+    /* sleep 5 sec between purges */
+    sleep_time.tv_sec = 5;
+    sleep_time.tv_usec = 0;
+    select(0, NULL, NULL, NULL, &sleep_time);
+
+    /* fprintf(stderr, "thread still here\n"); */
+
+    cur_time = time(NULL);
+    for (i = 0; i < TREES; i++) {
+
+      /* === *** ACQUIRE TREE LOCK *** === */
+      pthread_mutex_lock(&(connection_tree[i].tree_mutex));
+
+      pavl_t_init(&traverser, connection_tree[i].tree);
+
+      conn_last = (struct connection *)pavl_t_next(&traverser);
+      conn_cur = (struct connection *)pavl_t_next(&traverser);
+
+      t_expt = connection_tree[i].tree->pavl_count;
+      t_count = 0;
+      t_del = 0;
+      while (conn_last != NULL) {
+	t_count++;
+      
+	if (cur_time - conn_last->last_seen > PURGE_RATE) {
+
+	  /* Do the deletion */
+	  conn_last = (struct connection *)pavl_delete(connection_tree[i].tree,
+						       conn_last);
+
+	  if (conn_last->datalist != NULL) {
+	    abandon_packets(conn_last->datalist);
+	  }
+
+	  /* Now free connection */
+	  free(conn_last);
+
+	  t_del++;
+	}	  
+
+	/* Move on */
+	conn_last = conn_cur;
+	conn_cur = (struct connection *)pavl_t_next(&traverser);
+      }
+      /*
+	fprintf(stderr, "Purge finished: t_expt=%u, t_del=%u, t_count=%u\n",
+	t_expt, t_del, t_count);
+      */
+
+      /* === *** RELEASE TREE LOCK *** === */
+      pthread_mutex_unlock(&(connection_tree[i].tree_mutex));
+
+    } /* End for tree */
+  
+  } /* END while terminate */
+
+  return NULL;
 }
