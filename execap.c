@@ -302,6 +302,13 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
     return;
   }
 
+  /* Make sure we have a complete tcp header */
+  if (iplen < (iphlen + tcphlen)) {
+    /*fprintf(stderr, "Got truncated TCP header (IP size=%u; caplen=%u)\n",
+      (unsigned int)iplen, (unsigned int)header->caplen);*/
+    return;
+  }
+
   /* We now know the data offset */
   data_offset = ETH_HDR_SIZE + iphlen + tcphlen;
 
@@ -315,7 +322,7 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
    * Now figure out the data length (must use IP length, not caplen because
    * Ethernet frames can have padding).
    */
-  datalen = iplen - (data_offset - ETH_HDR_SIZE);
+  datalen = iplen - (iphlen + tcphlen);
 
   /* Sanity check size of data returned */
   if (datalen > SNAPLEN) {
