@@ -182,7 +182,12 @@ int main(int argc, char * const argv[]) {
   pcap_loop(pch, -1, packet_callback, NULL);
   fprintf(stderr, "\nSignal caught, PCAP loop terminated.\n");
 
-  /* === Stopped listening, must have gotten signal === */
+  /* There is a chance the pcap_loop() call returned for a reason
+   * other than a signal.  We need to make sure the thread terminates.
+   */
+  terminate = 1;
+
+  /* === Stopped listening, wait for the thread to die === */
   fprintf(stderr, "Waiting for threads to finish before exiting...\n");
   pthread_join(connection_reaper, NULL);
 
