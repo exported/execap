@@ -256,6 +256,9 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
   u_char * next_offset;
   u_char * exe_offset;
   size_t exe_size;
+  u_short exe_machine;
+  u_short exe_subsystem;
+  u_short exe_characteristics;
 
   /* The log and exe saving vars */
   u_char exe_md5[33];
@@ -706,8 +709,8 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
 			   (*conn_probe)->search_offset,
 			   ((*conn_probe)->datalist)->datalen -
 			   (*conn_probe)->search_offset,
-			   &exe_offset,
-			   &exe_size);
+			   &exe_offset, &exe_size, &exe_machine,
+			   &exe_subsystem, &exe_characteristics);
 
     /* Find the new offset */
     (*conn_probe)->search_offset = next_offset -
@@ -733,10 +736,14 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
 
       exe_log_len +=
 	snprintf(exe_log + exe_log_len, MAX_LOG_LINE - exe_log_len,
-		 " -> %s:%u (Size=%u; MD5=%s)\n",
+		 " -> %s:%u (Size=%u; Machine=0x%04x; "
+		 "Subsystem=0x%04x; IsDLL=%u; MD5=%s)\n",
 		 inet_ntoa((*conn_probe)->ip_dst),
 		 ntohs((*conn_probe)->th_dport),
-		 (unsigned int)exe_size, exe_md5);
+		 (unsigned int)exe_size,
+		 exe_machine, exe_subsystem,
+		 ((exe_characteristics & 0x2000) > 0),
+		 exe_md5);
 
       /* Terminate the string */
       exe_log[exe_log_len] = '\0';
@@ -749,7 +756,8 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
       fsync(log_fd);
 
       /* Make the EXE filename */
-      exe_file_len = snprintf(exe_file, MAX_FILE_LEN, "/var/log/execap/exes/exe_%s", exe_md5);
+      exe_file_len = snprintf(exe_file, MAX_FILE_LEN,
+			      "/var/log/execap/exes/exe_%s", exe_md5);
       
       /* terminate file name string */
       exe_file[exe_file_len] = '\0';
