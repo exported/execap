@@ -10,12 +10,15 @@ static u_char * memstr(const u_char *, const size_t,
 
 
 unsigned char *find_exe(const u_char *data, const size_t len,
-			u_char **exedata, size_t *exesize) {
+			u_char **exedata, size_t *exesize,
+			u_short *machine, u_short *subsystem,
+			u_short *characteristics) {
 
   u_char *mz;
   unsigned int pe_offset, pe_magic;
 
-  unsigned short pe_num_sect, pe_oh_size;
+  unsigned short pe_num_sect, pe_oh_size, pe_machine;
+  unsigned short pe_subsystem, pe_characteristics;
 
   unsigned int pe_cert_start, pe_cert_size;
 
@@ -63,8 +66,10 @@ unsigned char *find_exe(const u_char *data, const size_t len,
     return (mz + 2);
   }
 
+  pe_machine = *((unsigned short *)(mz + pe_offset + 4 + 0));
   pe_num_sect = *((unsigned short *)(mz + pe_offset + 4 + 2));
   pe_oh_size = *((unsigned short *)(mz + pe_offset + 4 + 16));
+  pe_characteristics = *((unsigned short *)(mz + pe_offset + 4 + 18));
 
   /*
   fprintf(stderr, "Got %u sections\n", pe_num_sect);
@@ -77,6 +82,7 @@ unsigned char *find_exe(const u_char *data, const size_t len,
     return (mz + 2);
   }
 
+  pe_subsystem = *((unsigned int *)(mz + pe_offset + 24 + 68));
   pe_cert_start = *((unsigned int *)(mz + pe_offset + 24 + 128));
   pe_cert_size = *((unsigned int *)(mz + pe_offset + 24 + 132));
 
@@ -119,6 +125,10 @@ unsigned char *find_exe(const u_char *data, const size_t len,
 
     *exedata = mz;
     *exesize = max_pe_size;
+
+    *machine = pe_machine;
+    *subsystem = pe_subsystem;
+    *characteristics = pe_characteristics;
 
     return mz + max_pe_size + 1;
   }

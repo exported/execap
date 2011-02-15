@@ -71,7 +71,7 @@ int log_fd;
 pcap_t *pch; /* PCAP handle must be global so signal handler can access it */
 int terminate = 0;
 
-#define TREES 65536
+#define TREES 65536 /* Don't change unless you know what you're doing */
 struct hash_node_tree {
   struct pavl_table *tree;
   pthread_mutex_t tree_mutex;
@@ -153,7 +153,6 @@ struct connection {
 };
 
 
-
 /* ===
  * Function prototypes
  * ===
@@ -170,7 +169,8 @@ void md5_hex(const u_char *, const size_t, u_char *);
 void *thread_connection_reaper(void *);
 
 /* findexe.c */
-extern u_char * find_exe(const u_char *, const size_t, u_char **, size_t *);
+extern u_char * find_exe(const u_char *, const size_t, u_char **, size_t *,
+			 u_short *, u_short *, u_short *);
 
 
 #endif /* end ifdef EXECAP_H */
