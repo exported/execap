@@ -24,7 +24,8 @@ int main(int argc, char * const argv[]) {
   /* === PCAP vars === */
   char * dev = NULL; /* The device to sniff on */
   char pc_errbuf[PCAP_ERRBUF_SIZE]; /* Error string */
-  char filter_str[] = "ip and tcp"; /* The filter expression */
+  char base_filter_str[] = "ip and tcp"; /* The constant filter expression */
+  char filter_str[BPF_FILTER_LEN]; /* The combined filter string */
   struct bpf_program filter_prog;/* The compiled filter */
   bpf_u_int32 mask;/* Our netmask */
   bpf_u_int32 net;/* Our IP */
@@ -62,8 +63,8 @@ int main(int argc, char * const argv[]) {
   };
 
   /* getopt_long() loop */
-  while ((arg_val =
-	  getopt_long(argc, argv, "i:hVv", long_options, NULL)) != EOF) {
+  while ((arg_val = getopt_long(argc, argv, "i:hVv",
+				long_options, NULL)) != EOF) {
     
     if (arg_val == 'h') {
       printf("execap: help usage\n");
@@ -83,6 +84,16 @@ int main(int argc, char * const argv[]) {
 
       dev = strdup(optarg);
     }
+
+  }
+
+  /* Check for bpf filter and end of options */
+  if (optind < argc) {
+    snprintf(filter_str, BPF_FILTER_LEN, "(%s) and (%s)", base_filter_str,
+	     argv[optind]);
+  }
+  else {
+    snprintf(filter_str, BPF_FILTER_LEN, "%s", base_filter_str);
   }
 
 
@@ -165,6 +176,7 @@ int main(int argc, char * const argv[]) {
   }
 
   /* Now apply the filter to an activated handle */
+  fprintf(stderr, "Setting capture filter to: %s\n", filter_str);
   if ((pret = pcap_setfilter(pch, &filter_prog)) != 0) {
     fprintf(stderr, "PCAP: Setting the filter failed with %d; err: %s\n",
 	    pret, pcap_geterr(pch));

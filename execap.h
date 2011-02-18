@@ -106,6 +106,9 @@ unsigned long long stats_bytes = 0;
 extern char *optarg;
 extern int optind, opterr, optopt;
 
+/* Flow filter length */
+#define BPF_FILTER_LEN 1024
+
 
 /* ===
  * Macros
