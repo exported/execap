@@ -6,6 +6,8 @@ CFLAGS=-Wall -march=native -O3
 
 LDLIBS=-lpcap -lssl -lpthread
 
+CFLAGS += -DEXECAPVER='"0.8"'
+
 #CFLAGS += -I/usr/include/pcap
 #CFLAGS += -DOLDPCAP
 

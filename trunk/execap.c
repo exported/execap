@@ -72,16 +72,18 @@ int main(int argc, char * const argv[]) {
       return 0;
     }
     else if (arg_val == 'V') {
-      printf("execap: testing version\n");
+      printf("execap v%s\n"
+	     "Copyright (C) 2010-2011 Brandon Enright <bmenrigh@ucsd.edu>.\n"
+	     "This is free software; see the source for copying conditions.  "
+	     "There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS "
+	     "FOR A PARTICULAR PURPOSE.\n\n", EXECAPVER);
 
       return 0;
     }
     else if (arg_val == 'v') {
-      fprintf(stderr, "Turning on verbose alerts\n");
+      /* fprintf(stderr, "Turning on verbose alerts\n"); */
     }
     else if (arg_val == 'i') {
-      fprintf(stderr, "Going to listen on interface %s\n", optarg);
-
       dev = strdup(optarg);
     }
 
@@ -115,6 +117,12 @@ int main(int argc, char * const argv[]) {
 
     return -1;
   }
+
+  /* Report that we've started up */
+  fprintf(stderr, "execap v%s started...\n\n", EXECAPVER);
+
+  /* Report that we're about to do the PCAP stuff */
+  fprintf(stderr, "PCAP: Going to listen on interface %s\n", optarg);
 
   /* Get the netmask and IP from the device */
   if (pcap_lookupnet(dev, &net, &mask, pc_errbuf) != 0) {
@@ -184,7 +192,7 @@ int main(int argc, char * const argv[]) {
   }
 
   /* Now apply the filter to an activated handle */
-  fprintf(stderr, "Setting capture filter to: %s\n", filter_str);
+  fprintf(stderr, "PCAP: Setting capture filter to: %s\n", filter_str);
   if ((pret = pcap_setfilter(pch, &filter_prog)) != 0) {
     fprintf(stderr, "PCAP: Setting the filter failed with %d; err: %s\n",
 	    pret, pcap_geterr(pch));
