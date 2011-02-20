@@ -120,6 +120,16 @@ extern int optind, opterr, optopt;
 
 
 /* ===
+ * Daemon stuff
+ * ===
+ */
+int daemonize = 0;
+pid_t daemon_pid;
+char pidfile[MAX_PATH_LEN];
+int pid_fd;
+
+
+/* ===
  * Macros
  * ===
  */

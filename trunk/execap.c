@@ -41,9 +41,15 @@ int main(int argc, char * const argv[]) {
 
   /* === Argument parsing vars === */
   int arg_val;
+  int option_index;
+
+  /* === Daemonize vars === */
+  pid_t fork_ret;
+  char pidtext[128];
 
   /* == Scratch vars === */
   int i;
+  int wlen;
 
 
   /* ===
@@ -55,14 +61,16 @@ int main(int argc, char * const argv[]) {
     {"logdir", required_argument, 0, 'l'},
     {"exedir", required_argument, 0, 'e'},
     {"verbose", no_argument, 0, 'v'},
+    {"daemonize", no_argument, 0, 'D'},
+    {"pidfile", required_argument, 0, 0},
     {"version", no_argument, 0, 'V'},
     {"help", no_argument, 0, 'h'},
     {0, 0, 0, 0}
   };
 
   /* getopt_long() loop */
-  while ((arg_val = getopt_long(argc, argv, "i:l:e:hVv",
-				long_options, NULL)) != EOF) {
+  while ((arg_val = getopt_long(argc, argv, "i:l:e:DhVv",
+				long_options, &option_index)) != EOF) {
     
     if (arg_val == 'h') {
       printf("execap v%s\n"
@@ -72,6 +80,8 @@ int main(int argc, char * const argv[]) {
 	     "-l, --logdir            save logs to this directory\n"
 	     "-e, --exedir            save executables to this directory\n"
 	     "-v, --verbose           turn on verbose output\n"
+	     "-D, --daemonize         run as daemon in background\n"
+	     "--pidfile               store daemon pid to this file\n"
 	     "-V, --version           display version and exit\n"
 	     "-h, --help              display this help and exit\n\n"
 	     "execap web page:  http://code.google.com/p/execap\n"
@@ -104,9 +114,22 @@ int main(int argc, char * const argv[]) {
       strncpy(exedir, optarg, MAX_PATH_LEN);
       exedir[MAX_PATH_LEN - 1] = '\0';
     }
+    else if (arg_val == 'D') {
+      daemonize = 1;
+    }
+    else if (arg_val == 0) {
+      /* These are the long options only */
+      if (strcmp(long_options[option_index].name, "pidfile") == 0) {
+	strncpy(pidfile, optarg, MAX_PATH_LEN);
+	pidfile[MAX_PATH_LEN - 1] = '\0';
+      }
+      else {
+	fprintf(stderr, "Got unknown option, quitting!\n");
+	return -1;
+      }
+    }
     else {
       fprintf(stderr, "Got unknown option, quitting!\n");
-      
       return -1;
     }
 
@@ -134,8 +157,58 @@ int main(int argc, char * const argv[]) {
     logdir[MAX_PATH_LEN - 1] = '\0';
   }
   if (exedir[0] == '\0') {
-    strncpy(logdir, "/var/log/execap/exes", MAX_PATH_LEN);
+    strncpy(exedir, "/var/log/execap/exes", MAX_PATH_LEN);
     exedir[MAX_PATH_LEN - 1] = '\0';
+  }
+  if (pidfile[0] == '\0') {
+    strncpy(pidfile, "/var/run/execap/execap.pid", MAX_PATH_LEN);
+    pidfile[MAX_PATH_LEN - 1] = '\0';
+  }
+  else {
+    if (daemonize == 0) {
+      fprintf(stderr, "WARNING: pidfile specified but not in daemon mode!\n");
+    }
+  }
+
+  /* ===
+   * Daemonize if we need to
+   * ===
+   */
+  if (daemonize == 1) {
+    fprintf(stderr, "Daemonizing...\n");
+    fork_ret = fork(); /* fork into background */
+    if (fork_ret == -1) {
+      fprintf(stderr, "Forking into the background failed.\n");
+      return -1;
+    }
+    else if (fork_ret != 0) {
+      /* This is the parent */
+      return 0;
+    }
+    else {
+      /* Break away from the parent */
+      daemon_pid = setsid();
+
+      /* No idea how this could fail */
+      if (daemon_pid == -1) {
+	fprintf(stderr, "Unable to break away from parent.\n");
+	return -1;
+      }
+
+      /* Open up the pid file */
+      if ((pid_fd = open(pidfile, O_WRONLY | O_TRUNC | O_EXCL, 0644)) == -1) {
+	fprintf(stderr, "PID: Opening of %s for writing failed!\n", pidfile);
+
+	return -1;
+      }
+
+      /* Make the text ready for write() */
+      snprintf(pidtext, sizeof(pidtext), "%d\n", daemon_pid);
+      wlen = write(pid_fd, pidtext, strlen(pidtext));
+
+      /* Close the pid file now */
+      close(pid_fd);
+    }
   }
 
 
@@ -149,11 +222,13 @@ int main(int argc, char * const argv[]) {
     return -1;
   }
 
-  /* Report that we've started up */
-  fprintf(stderr, "execap v%s started...\n\n", EXECAPVER);
+  if (daemonize == 0) {
+    /* Report that we've started up */
+    fprintf(stderr, "execap v%s started...\n\n", EXECAPVER);
 
-  /* Report that we're about to do the PCAP stuff */
-  fprintf(stderr, "PCAP: Going to listen on interface %s\n", dev);
+    /* Report that we're about to do the PCAP stuff */
+    fprintf(stderr, "PCAP: Going to listen on interface %s\n", dev);
+  }
 
   /* Get the netmask and IP from the device */
   if (pcap_lookupnet(dev, &net, &mask, pc_errbuf) != 0) {
@@ -826,7 +901,9 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
       }
 
       /* Report this entry to the console */
-      fprintf(stderr, "%s", exe_log);
+      if (daemonize == 0) {
+	fprintf(stderr, "%s", exe_log);
+      }
 
       /* And write and sync it to the log */
       write_len = write(log_fd, exe_log, exe_log_len);
