@@ -122,12 +122,11 @@ int main(int argc, char * const argv[]) {
   fprintf(stderr, "execap v%s started...\n\n", EXECAPVER);
 
   /* Report that we're about to do the PCAP stuff */
-  fprintf(stderr, "PCAP: Going to listen on interface %s\n", optarg);
+  fprintf(stderr, "PCAP: Going to listen on interface %s\n", dev);
 
   /* Get the netmask and IP from the device */
   if (pcap_lookupnet(dev, &net, &mask, pc_errbuf) != 0) {
-    fprintf(stderr, "PCAP: Couldn't get netmask for device %s: %s\n",
-	    dev, pc_errbuf);
+    fprintf(stderr, "PCAP: Couldn't get netmask for device %s\n", pc_errbuf);
     net = 0;
     mask = 0;
   }
