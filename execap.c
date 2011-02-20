@@ -35,10 +35,6 @@ int main(int argc, char * const argv[]) {
   /* === Signal stuff === */
   struct sigaction sa_new, sa_old;
 
-  /* === Log file stuff === */
-  char log_file[MAX_FILE_LEN];
-  size_t log_file_len;
-
   /* === Thread vars === */
   pthread_t connection_reaper;
   int thread_ret;
@@ -55,15 +51,17 @@ int main(int argc, char * const argv[]) {
    * ===
    */
   struct option long_options[] = {
-    {"help", no_argument, 0, 'h'},
+    {"interface", required_argument, 0, 'i'},
+    {"logdir", required_argument, 0, 'l'},
+    {"exedir", required_argument, 0, 'e'},
     {"version", no_argument, 0, 'V'},
     {"verbose", no_argument, 0, 'v'},
-    {"interface", required_argument, 0, 'i'},
+    {"help", no_argument, 0, 'h'},
     {0, 0, 0, 0}
   };
 
   /* getopt_long() loop */
-  while ((arg_val = getopt_long(argc, argv, "i:hVv",
+  while ((arg_val = getopt_long(argc, argv, "i:l:e:hVv",
 				long_options, NULL)) != EOF) {
     
     if (arg_val == 'h') {
@@ -86,6 +84,19 @@ int main(int argc, char * const argv[]) {
     else if (arg_val == 'i') {
       dev = strdup(optarg);
     }
+    else if (arg_val == 'l') {
+      strncpy(logdir, optarg, MAX_PATH_LEN);
+      logdir[MAX_PATH_LEN - 1] = '\0';
+    }
+    else if (arg_val == 'e') {
+      strncpy(exedir, optarg, MAX_PATH_LEN);
+      exedir[MAX_PATH_LEN - 1] = '\0';
+    }
+    else {
+      fprintf(stderr, "Got unknown option, quitting!\n");
+      
+      return -1;
+    }
 
   }
 
@@ -99,18 +110,25 @@ int main(int argc, char * const argv[]) {
   }
 
 
-  /* Make sure the arguments we need were provided */
+  /* Make sure the arguments we need were provided or fill in defaults */
   if (dev == NULL) {
     fprintf(stderr, "A listening interface must be provided with -i\n");
 
     return 1;
   }
+  if (logdir[0] == '\0') {
+    strncpy(logdir, "/var/log/execap", MAX_PATH_LEN);
+    logdir[MAX_PATH_LEN - 1] = '\0';
+  }
+  if (exedir[0] == '\0') {
+    strncpy(logdir, "/var/log/execap/exes", MAX_PATH_LEN);
+    exedir[MAX_PATH_LEN - 1] = '\0';
+  }
 
 
   /* Open the log file handle */
-  log_file_len = snprintf(log_file, MAX_FILE_LEN,
-			  "/var/log/execap/log_execap.%d", (int)time(NULL));
-  log_file[log_file_len] = '\0';
+  snprintf(log_file, MAX_PATH_LEN,
+	   "%s/log_execap.%d", logdir, (int)time(NULL));
 
   if ((log_fd = open(log_file, O_WRONLY | O_CREAT | O_EXCL, 0644)) == -1) {
     fprintf(stderr, "LOG: Opening of %s for writing failed!\n", log_file);
@@ -306,9 +324,9 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
   /* The log and exe saving vars */
   u_char exe_md5[33];
   struct tm time_detail;
-  char exe_log[MAX_LOG_LINE];
+  char exe_log[MAX_PATH_LEN];
   size_t exe_log_len;
-  char exe_file[MAX_FILE_LEN];
+  char exe_file[MAX_PATH_LEN];
   size_t exe_file_len;
   int exe_fd;
   struct stat file_stat;
@@ -770,15 +788,18 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
 
       exe_log_len = 0;
       exe_log_len +=
-	snprintf(exe_log + exe_log_len, MAX_LOG_LINE - exe_log_len,
+	snprintf(exe_log + exe_log_len, MAX_PATH_LEN - exe_log_len,
 		 "%04d-%02d-%02dT%02d:%02d:%02d (UTC) -- EXE -- %s:%u",
 		 time_detail.tm_year + 1900, time_detail.tm_mon + 1,
 		 time_detail.tm_mday, time_detail.tm_hour, time_detail.tm_min,
 		 time_detail.tm_sec, inet_ntoa((*conn_probe)->ip_src),
 		 ntohs((*conn_probe)->th_sport));
+      if (exe_log_len >= MAX_PATH_LEN) {
+	exe_log_len = MAX_PATH_LEN - 1;
+      }
 
       exe_log_len +=
-	snprintf(exe_log + exe_log_len, MAX_LOG_LINE - exe_log_len,
+	snprintf(exe_log + exe_log_len, MAX_PATH_LEN - exe_log_len,
 		 " -> %s:%u (Size=%u; Machine=0x%04x; "
 		 "Subsystem=0x%04x; IsDLL=%u; MD5=%s)\n",
 		 inet_ntoa((*conn_probe)->ip_dst),
@@ -787,9 +808,9 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
 		 exe_machine, exe_subsystem,
 		 ((exe_characteristics & 0x2000) > 0),
 		 exe_md5);
-
-      /* Terminate the string */
-      exe_log[exe_log_len] = '\0';
+      if (exe_log_len >= MAX_PATH_LEN) {
+	exe_log_len = MAX_PATH_LEN - 1;
+      }
 
       /* Report this entry to the console */
       fprintf(stderr, "%s", exe_log);
@@ -799,11 +820,11 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
       fsync(log_fd);
 
       /* Make the EXE filename */
-      exe_file_len = snprintf(exe_file, MAX_FILE_LEN,
-			      "/var/log/execap/exes/exe_%s", exe_md5);
-      
-      /* terminate file name string */
-      exe_file[exe_file_len] = '\0';
+      exe_file_len = snprintf(exe_file, MAX_PATH_LEN,
+			      "%s/exe_%s", exedir, exe_md5);
+      if (exe_file_len >= MAX_PATH_LEN) {
+	exe_file_len = MAX_PATH_LEN - 1;
+      }
 
       /* Stat that file to check for existence */
       if (stat(exe_file, &file_stat) == -1) {

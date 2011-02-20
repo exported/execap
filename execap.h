@@ -85,10 +85,14 @@
 
 #define MAX_EXE_DEPTH 4096
 
-#define MAX_LOG_LINE 256
-#define MAX_FILE_LEN 256
+#define MAX_PATH_LEN 256
 /* The log file handle */
 int log_fd;
+/* Other log stuff */
+char logdir[MAX_PATH_LEN];
+char exedir[MAX_PATH_LEN];
+char log_file[MAX_PATH_LEN];
+size_t log_file_len;
 
 pcap_t *pch; /* PCAP handle must be global so signal handler can access it */
 int terminate = 0;
