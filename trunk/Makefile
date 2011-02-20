@@ -7,6 +7,7 @@ CFLAGS=-Wall -march=native -O3
 LDLIBS=-lpcap -lssl -lpthread
 
 #CFLAGS += -I/usr/include/pcap
+#CFLAGS += -DOLDPCAP
 
 main: execap
 

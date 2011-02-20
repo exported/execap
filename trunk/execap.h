@@ -59,7 +59,12 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
+
+#ifdef OLDPCAP
+#include <pcap.h>
+#else
 #include <pcap/pcap.h>
+#endif
 
 
 /* ===
