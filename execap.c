@@ -54,8 +54,8 @@ int main(int argc, char * const argv[]) {
     {"interface", required_argument, 0, 'i'},
     {"logdir", required_argument, 0, 'l'},
     {"exedir", required_argument, 0, 'e'},
-    {"version", no_argument, 0, 'V'},
     {"verbose", no_argument, 0, 'v'},
+    {"version", no_argument, 0, 'V'},
     {"help", no_argument, 0, 'h'},
     {0, 0, 0, 0}
   };
@@ -65,7 +65,19 @@ int main(int argc, char * const argv[]) {
 				long_options, NULL)) != EOF) {
     
     if (arg_val == 'h') {
-      printf("execap: help usage\n");
+      printf("execap v%s\n"
+	     "Usage: execap -i interface [OPTIONS] [CAPTURE FILTER]\n\n"
+	     "Options:\n"
+	     "-i, --interface         specify interface to capture on\n"
+	     "-l, --logdir            save logs to this directory\n"
+	     "-e, --exedir            save executables to this directory\n"
+	     "-v, --verbose           turn on verbose output\n"
+	     "-V, --version           display version and exit\n"
+	     "-h, --help              display this help and exit\n\n"
+	     "execap web page:  http://code.google.com/p/execap\n"
+	     "Report bugs to:   bmenrigh@ucsd.edu "
+	     "/ http://code.google.com/p/execap/issues\n",
+	     EXECAPVER);
 
       return 0;
     }
@@ -112,7 +124,8 @@ int main(int argc, char * const argv[]) {
 
   /* Make sure the arguments we need were provided or fill in defaults */
   if (dev == NULL) {
-    fprintf(stderr, "A listening interface must be provided with -i\n");
+    fprintf(stderr, "A listening interface must be provided with -i / "
+	    "--interface\n");
 
     return 1;
   }
