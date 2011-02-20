@@ -124,6 +124,14 @@ int main(int argc, char * const argv[]) {
     mask = 0;
   }
 
+#ifdef OLDPCAP
+    if ((pch = pcap_open_live(dev, SNAPLEN, 1, PCAPTIMEOUT, pc_errbuf)) == 0) {
+    fprintf(stderr, "PCAP: Unable to get pcap handle for %s: %s\n",
+	    dev, pc_errbuf);
+    return -1;
+  }
+#else
+
   /* Get our pcap handle */
   if ((pch = pcap_create(dev, pc_errbuf)) == 0) {
     fprintf(stderr, "PCAP: Unable to get pcap handle for %s: %s\n",
@@ -159,9 +167,9 @@ int main(int argc, char * const argv[]) {
     if ((pret == PCAP_WARNING) || (pret == PCAP_ERROR)) {
       fprintf(stderr, "PCAP: The activation error was %s\n", pcap_geterr(pch));
     }
-
     return -1;
   }
+#endif
 
   /* Make sure the datalink is Ethernet */
   if (pcap_datalink(pch) != DLT_EN10MB) {
