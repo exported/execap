@@ -46,6 +46,9 @@ int main(int argc, char * const argv[]) {
   /* === Daemonize vars === */
   pid_t fork_ret;
   char pidtext[128];
+  int pipefd[2];
+  char pipebuf = '\0';
+  int devnullfd;
 
   /* == Scratch vars === */
   int i;
@@ -150,7 +153,7 @@ int main(int argc, char * const argv[]) {
     fprintf(stderr, "A listening interface must be provided with -i / "
 	    "--interface\n");
 
-    return 1;
+    return -1;
   }
   if (logdir[0] == '\0') {
     strncpy(logdir, "/var/log/execap", MAX_PATH_LEN);
@@ -176,18 +179,42 @@ int main(int argc, char * const argv[]) {
    */
   if (daemonize == 1) {
     fprintf(stderr, "Daemonizing...\n");
+
+    if (pipe(pipefd) == -1) {
+      fprintf(stderr, "Failed to create pipe.\n");
+      return -1;
+    }
+
+    /* === Become two processes === */
     fork_ret = fork(); /* fork into background */
+
     if (fork_ret == -1) {
       fprintf(stderr, "Forking into the background failed.\n");
       return -1;
     }
     else if (fork_ret != 0) {
       /* This is the parent */
+
+      /* Close the write end of the pipe */
+      close(pipefd[1]);
+
+      /* Now read from the child */
+      if (read(pipefd[0], &pipebuf, 1) != 1) {
+	fprintf(stderr, "Background process died.\n");
+	return -1;
+      }
+      close(pipefd[0]);
+
+      fprintf(stderr, "execap successfully started in background.\n");
+
       return 0;
     }
     else {
       /* Break away from the parent */
       daemon_pid = setsid();
+
+      /* Close the read end of the pipe */
+      close(pipefd[0]);
 
       /* No idea how this could fail */
       if (daemon_pid == -1) {
@@ -195,19 +222,22 @@ int main(int argc, char * const argv[]) {
 	return -1;
       }
 
+      /* === Write our PID to a file === */
+
       /* Open up the pid file */
-      if ((pid_fd = open(pidfile, O_WRONLY | O_TRUNC | O_EXCL, 0644)) == -1) {
+      if ((pid_fd = open(pidfile, O_CREAT | O_WRONLY | O_TRUNC, 0644)) == -1) {
 	fprintf(stderr, "PID: Opening of %s for writing failed!\n", pidfile);
 
 	return -1;
       }
 
-      /* Make the text ready for write() */
+      /* Make the pid text ready for write() */
       snprintf(pidtext, sizeof(pidtext), "%d\n", daemon_pid);
       wlen = write(pid_fd, pidtext, strlen(pidtext));
 
       /* Close the pid file now */
       close(pid_fd);
+
     }
   }
 
@@ -222,13 +252,11 @@ int main(int argc, char * const argv[]) {
     return -1;
   }
 
-  if (daemonize == 0) {
-    /* Report that we've started up */
-    fprintf(stderr, "execap v%s started...\n\n", EXECAPVER);
+  /* Report that we've started up */
+  fprintf(stderr, "execap v%s started...\n\n", EXECAPVER);
 
-    /* Report that we're about to do the PCAP stuff */
-    fprintf(stderr, "PCAP: Going to listen on interface %s\n", dev);
-  }
+  /* Report that we're about to do the PCAP stuff */
+  fprintf(stderr, "PCAP: Going to listen on interface %s\n", dev);
 
   /* Get the netmask and IP from the device */
   if (pcap_lookupnet(dev, &net, &mask, pc_errbuf) != 0) {
@@ -326,6 +354,35 @@ int main(int argc, char * const argv[]) {
   /* Before listening, start the connection reaper thread */
   thread_ret = pthread_create(&connection_reaper, NULL,
 			      thread_connection_reaper, NULL);
+
+
+  /* 
+   * Before we go into the pcap loop, we need to tell the parent
+   * that we made it.
+   */
+  if (daemonize == 1) {
+    if (write(pipefd[1], &pipebuf, 1) == -1) {
+      fprintf(stderr, "Unable to notify parent of success.\n");
+    }
+    close(pipefd[1]);
+
+    /* == Make stdin, stdout, and stderr all /dev/null === */
+    if ((devnullfd = open("/dev/null", O_RDWR, 0)) == -1) {
+      fprintf(stderr, "Unable to open /dev/null\n");
+      return -1;
+    }
+
+    /* Force std{in,out,err} to /dev/null */
+    dup2(devnullfd, STDIN_FILENO);
+    dup2(devnullfd, STDOUT_FILENO);
+    dup2(devnullfd, STDERR_FILENO);
+    
+    /* Close devnullfd if we need to */
+    if (devnullfd > STDERR_FILENO) {
+      close(devnullfd);
+    }
+  }
+  
 
   /* Now start capturing and handling packets */
   pcap_loop(pch, -1, packet_callback, NULL);
@@ -901,9 +958,7 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
       }
 
       /* Report this entry to the console */
-      if (daemonize == 0) {
-	fprintf(stderr, "%s", exe_log);
-      }
+      fprintf(stderr, "%s", exe_log);
 
       /* And write and sync it to the log */
       write_len = write(log_fd, exe_log, exe_log_len);
