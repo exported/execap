@@ -138,7 +138,7 @@ int main(int argc, char * const argv[]) {
 
   }
 
-  /* Check for bpf filter and end of options */
+  /* Check for bpf filter at end of options */
   if (optind < argc) {
     snprintf(filter_str, BPF_FILTER_LEN, "(%s) and (%s)", base_filter_str,
 	     argv[optind]);
