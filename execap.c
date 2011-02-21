@@ -459,12 +459,13 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
   u_char handle_case = 0;
 
   /* The EXE search vars */
-  u_char * next_offset;
-  u_char * exe_offset;
+  u_char *next_offset;
+  u_char *exe_offset;
   size_t exe_size;
   u_short exe_machine;
   u_short exe_subsystem;
   u_short exe_characteristics;
+  u_char newformat;
 
   /* The log and exe saving vars */
   u_char exe_md5[33];
@@ -916,7 +917,8 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
 			   ((*conn_probe)->datalist)->datalen -
 			   (*conn_probe)->search_offset,
 			   &exe_offset, &exe_size, &exe_machine,
-			   &exe_subsystem, &exe_characteristics);
+			   &exe_subsystem, &exe_characteristics,
+			   &newformat);
 
     /* Find the new offset */
     (*conn_probe)->search_offset = next_offset -
@@ -946,13 +948,13 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
       exe_log_len +=
 	snprintf(exe_log + exe_log_len, MAX_PATH_LEN - exe_log_len,
 		 " -> %s:%u (Size=%u; Machine=0x%04x; "
-		 "Subsystem=0x%04x; IsDLL=%u; MD5=%s)\n",
+		 "Subsystem=0x%04x; IsDLL=%u; IsPE32+=%u; MD5=%s)\n",
 		 inet_ntoa((*conn_probe)->ip_dst),
 		 ntohs((*conn_probe)->th_dport),
 		 (unsigned int)exe_size,
 		 exe_machine, exe_subsystem,
 		 ((exe_characteristics & 0x2000) > 0),
-		 exe_md5);
+		 newformat, exe_md5);
       if (exe_log_len >= MAX_PATH_LEN) {
 	exe_log_len = MAX_PATH_LEN - 1;
       }
