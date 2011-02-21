@@ -209,7 +209,7 @@ void *thread_connection_reaper(void *);
 
 /* findexe.c */
 extern u_char * find_exe(const u_char *, const size_t, u_char **, size_t *,
-			 u_short *, u_short *, u_short *);
+			 u_short *, u_short *, u_short *, u_char *);
 
 
 #endif /* end ifdef EXECAP_H */
