@@ -1,0 +1,87 @@
+.TH EXECAP 1 "April 2011" Linux "User Manuals"
+.SH NAME
+execap \- Snarf Windows executables off the wire (Driftnet for EXEs)
+.SH SYNOPSIS
+.na
+.B execap
+.B \-i
+.I interface
+[
+.B \-v
+] [
+.B \-D
+]
+.br
+.ti +8
+[
+.B \-l
+.I logdir
+] [
+.B \-e
+.I exedir
+] [
+.B \-\^\-pidfile
+.I file
+]
+.na
+.ti +8
+[
+.I filterexpression
+]
+.SH DESCRIPTION
+.B execap
+is an information security tool for capturing Windows executables as they are transmitted or received. This is somewhat inspired by
+.B Driftnet
+which captures images in transmission.  The packet capture is done using
+.BR pcap (3)
+and on a fast machine can analyze traffic at more than 3 Gbps.
+.SH OPTIONS
+.TP
+.BI \-i " INT" "\fR,\fP \-\^\-interface=" INT
+Listen on
+.I INT
+for executables.
+.TP
+.BI \-l " DIR" "\fR,\fP \-\^\-logdir=" DIR
+Store logs in
+.I DIR
+rather than the default \fI/var/log/execap\fP.
+.TP
+.BI \-e " DIR" "\fR,\fP \-\^\-exedir=" DIR
+Store captured executables in
+.I DIR
+rather than the default \fI/var/log/execap/exes\fP.
+.TP
+.BI \-D "\fR,\fP " \-\^\-daemonize
+Fork execap into the background.
+.TP
+.BI \-\^\-pidfile " FILE"
+Store the process PID in \fIFILE\fP.  This is useful when daemonizing with \fB\-D\fP.
+.TP
+.BI \-v "\fR,\fP " \-\^\-verbose
+Turn on verbose output.  Currently this flag is ignored.
+.TP
+.BI \-V "\fR,\fP " \-\^\-version
+Display
+.B execap
+version and exit.
+.TP
+.BI \-h "\fR,\fP " \-\^\-help
+Report basic usage information and exit.
+.SH BUGS
+.B execap
+is stable and well tested however there are a number of limitations and gotchas. See
+.I http://code.google.com/p/execap/issues
+for a list or to file a report.
+.SH AUTHOR
+.LP
+Brandon Enright <bmenrigh@ucsd.edu>
+.LP
+.B execap
+is maintained at
+.I http://code.google.com/p/execap
+.SH "SEE ALSO"
+.BR snort (1),
+.BR tcpdump (1),
+.BR driftnet (1),
+.BR pcap (3)
