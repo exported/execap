@@ -68,6 +68,13 @@ version and exit.
 .TP
 .BI \-h "\fR,\fP " \-\^\-help
 Report basic usage information and exit.
+.IP "\fI filterexpression\fP"
+.RS
+Selects which packets will be captured and analyzed for executables.
+If no \fIfilterexpression\fP
+is given, all traffic will be analyzed.  See the 
+.BR tcpdump (1)
+man page for more information.
 .SH BUGS
 .B execap
 is stable and well tested however there are a number of limitations and gotchas. See
