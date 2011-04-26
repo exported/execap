@@ -30,7 +30,7 @@
 #define PE_OH_OFFSET 24
 
 static uint8_t * memstr(const uint8_t *, const size_t,
-		       const uint8_t *, const size_t);
+			const uint8_t *, const size_t);
 
 
 u_char *find_exe(const u_char *data, const size_t len,
@@ -233,11 +233,15 @@ u_char *find_exe(const u_char *data, const size_t len,
  * Locate needle, of length n_len, in haystack, of length h_len, returning NULL
  * Uses the Boyer-Moore search algorithm. Cf.
  * http://www-igm.univ-mlv.fr/~lecroq/string/node14.html
+ *
+ * This algorithm is very fast for longer needles but for very short ones like
+ * "MZ" it is slower because of setup time.
  */
 static uint8_t * memstr(const uint8_t *haystack, const size_t hlen,
-		       const uint8_t *needle, const size_t nlen) {
+			const uint8_t *needle, const size_t nlen) {
 
-  int skip[256], i, j, k;
+  uint8_t skip[256];
+  int i, j, k;
 
   if (nlen == 0) {
     return (uint8_t *)haystack;
