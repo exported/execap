@@ -1117,7 +1117,7 @@ void md5_hex(const u_char *data, const size_t len, u_char *hexstr) {
   MD5(data, len, md5bin);
 
   for (i = 0; i < 16; i++) {
-    sprintf((char *)(hexstr + (i * 2)), "%02x", md5bin[i]);
+    snprintf((char *)(hexstr + (i * 2)), 3, "%02x", md5bin[i]);
   }
 
   hexstr[32] = '\0';
