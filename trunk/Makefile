@@ -5,7 +5,7 @@ CFLAGS=-Wall -march=native -O3
 #CFLAGS=-Wall -march=native -O2 -pg
 #CFLAGS=-Wall -march=native -O0 -g
 
-LDLIBS=-lpcap -lssl -lpthread
+LDLIBS=-lpcap -lssl -lcrypto -lpthread
 
 # This sets the execap version string
 CFLAGS += -DEXECAPVER='"0.8"'
