@@ -93,7 +93,7 @@ int log_fd;
 char logdir[MAX_PATH_LEN];
 char exedir[MAX_PATH_LEN];
 char log_file[MAX_PATH_LEN];
-size_t log_file_len;
+int discard_exes = 0;
 
 pcap_t *pch; /* PCAP handle must be global so signal handler can access it */
 int terminate = 0;

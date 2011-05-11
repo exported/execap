@@ -63,6 +63,7 @@ int main(int argc, char * const argv[]) {
     {"interface", required_argument, 0, 'i'},
     {"logdir", required_argument, 0, 'l'},
     {"exedir", required_argument, 0, 'e'},
+    {"discard-exes", no_argument, 0, 0},
     {"verbose", no_argument, 0, 'v'},
     {"daemonize", no_argument, 0, 'D'},
     {"pidfile", required_argument, 0, 0},
@@ -82,6 +83,7 @@ int main(int argc, char * const argv[]) {
 	     "-i, --interface         specify interface to capture on\n"
 	     "-l, --logdir            save logs to this directory\n"
 	     "-e, --exedir            save executables to this directory\n"
+	     "--discard-exes          do not store executables on disk\n"
 	     "-v, --verbose           turn on verbose output\n"
 	     "-D, --daemonize         run as daemon in background\n"
 	     "--pidfile               store daemon pid to this file\n"
@@ -126,13 +128,16 @@ int main(int argc, char * const argv[]) {
 	strncpy(pidfile, optarg, MAX_PATH_LEN);
 	pidfile[MAX_PATH_LEN - 1] = '\0';
       }
+      else if (strcmp(long_options[option_index].name, "discard-exes") == 0) {
+	discard_exes = 1;
+      }
       else {
-	fprintf(stderr, "Got unknown option, quitting!\n");
+	fprintf(stderr, "Got unknown long option, quitting!\n");
 	return -1;
       }
     }
     else {
-      fprintf(stderr, "Got unknown option, quitting!\n");
+      fprintf(stderr, "Got unknown short option, quitting!\n");
       return -1;
     }
 
@@ -973,18 +978,27 @@ void packet_callback(u_char * user, const struct pcap_pkthdr *header,
 	exe_file_len = MAX_PATH_LEN - 1;
       }
 
-      /* Stat that file to check for existence */
-      if (stat(exe_file, &file_stat) == -1) {
-	if ((exe_fd = open(exe_file,
-			   O_WRONLY | O_CREAT | O_EXCL, 0644)) != -1) {
 
-	  /* Write to the file */
-	  write_len = write(exe_fd, exe_offset, exe_size);
+      /* Now we should check if we need to store this executable on
+       * disk and if so, do it without replacing it if it is already
+       * there.
+       */
+      if (discard_exes == 0) {
+	/* Stat that file to check for existence */
+	if (stat(exe_file, &file_stat) == -1) {
 
-	  /* Close the file */
-	  close(exe_fd);
-	}
-      }	
+	  /* This open will fail if the file is already there */
+	  if ((exe_fd = open(exe_file,
+			     O_WRONLY | O_CREAT | O_EXCL, 0644)) != -1) {
+
+	    /* Write to the file */
+	    write_len = write(exe_fd, exe_offset, exe_size);
+
+	    /* Close the file */
+	    close(exe_fd);
+	  }
+	}	
+      }
 
       /* We don't want to try this connection again */
       abandon_packets((*conn_probe)->datalist);
