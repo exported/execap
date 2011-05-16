@@ -5,10 +5,10 @@ CFLAGS=-Wall -march=native -O3
 #CFLAGS=-Wall -march=native -O2 -pg
 #CFLAGS=-Wall -march=native -O0 -g
 
-LDLIBS=-lpcap -lssl -lcrypto -lpthread
-
 # This sets the execap version string
 CFLAGS += -DEXECAPVER='"0.8"'
+
+LDLIBS=-lpcap -lssl -lcrypto -lpthread
 
 # If you have an old version of libpcap (less than 1.0) then you probably
 # need to uncomment this:
@@ -17,6 +17,11 @@ CFLAGS += -DEXECAPVER='"0.8"'
 # This shouldn't be needed but if you have libpcap problems
 # give it a try
 #CFLAGS += -I/usr/include/pcap
+#CFLAGS += -I/usr/libpcap1/include/
+
+# If you are having trouble locating a library such as libpcap set this
+#CFLAGS += -L/usr/lib64/ -L/usr/lib64/libpcap1/lib64/
+
 
 main: execap
 
