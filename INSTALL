@@ -1,0 +1,4 @@
+Strictly speaking execap doesn't need to be installed.  I can be
+compiled and run out of the local directory.  If you use the provided
+'configure' script to generate a Makefile you will have access to
+'make install' which should work on your system.
