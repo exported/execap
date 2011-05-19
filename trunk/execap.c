@@ -97,7 +97,7 @@ int main(int argc, char * const argv[]) {
       return 0;
     }
     else if (arg_val == 'V') {
-      printf("execap v%s\n"
+      printf("execap v%s\n\n"
 	     "Copyright (C) 2010-2011 Brandon Enright <bmenrigh@ucsd.edu>.\n"
 	     "This is free software; see the source for copying conditions.  "
 	     "There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS "

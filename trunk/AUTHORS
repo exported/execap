@@ -1,0 +1,5 @@
+The author of execap is Brandon Enright <bmenrigh@ucsd.edu>.
+
+The parent AVL tree used is part of GNU libavl.  See http://www.stanford.edu/~blp/avl/
+
+Some code is inspired by ideas from tcpdump and Driftnet.
