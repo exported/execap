@@ -1,7 +1,7 @@
 AUTOMAKE_OPTIONS = foreign
 
-#CFLAGS = -Wall -march=native -O3 -DEXECAPVER="\"$(VERSION)\""
-CFLAGS = -Wall -O3 -DEXECAPVER="\"$(VERSION)\""
+#CFLAGS = -Wall -march=native -O3 -DEXECAPVER="\"$(VERSION)\"" -DOLDPCAP=$(OLDPCAP)
+CFLAGS = -Wall -O3 -DEXECAPVER="\"$(VERSION)\"" -DOLDPCAP=$(OLDPCAP)
 LDFLAGS = -lpcap -lcrypto -lpthread
 
 bin_PROGRAMS = execap
