@@ -18,6 +18,11 @@
 #ifndef EXECAP_H
 #define EXECAP_H 1
 
+/* ===
+ * The autoconf generated config
+ * ===
+ */
+#include "config.h"
 
 /* ===
  * General includes
@@ -61,10 +66,10 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
-#ifdef OLDPCAP
-#include <pcap.h>
-#else
+#ifdef HAVE_PCAP_PCAP_H
 #include <pcap/pcap.h>
+#else
+#include <pcap.h>
 #endif
 
 

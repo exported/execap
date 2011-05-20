@@ -270,7 +270,12 @@ int main(int argc, char * const argv[]) {
     mask = 0;
   }
 
-#ifdef OLDPCAP
+  /* Older versions of libpcap don't offer some of the nicer features 
+   * such as setting a buffer size.  configure.ac is setup to check
+   * for these features and set OLDPCAP to 0 or 1.  If they aren't
+   * available we'll have to suffer without them
+   */
+#if OLDPCAP == 1
     if ((pch = pcap_open_live(dev, SNAPLEN, 1, PCAPTIMEOUT, pc_errbuf)) == 0) {
     fprintf(stderr, "PCAP: Unable to get pcap handle for %s: %s\n",
 	    dev, pc_errbuf);
