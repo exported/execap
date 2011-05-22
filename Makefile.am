@@ -14,4 +14,5 @@ noinst_HEADERS = execap.h pavl.h
 
 man_MANS = execap.1
 
-EXTRA_DIST = $(man_MANS) LICENSE COPYING AUTHORS NEWS ChangeLog README
+EXTRA_DIST = $(man_MANS) LICENSE COPYING AUTHORS NEWS ChangeLog README \
+	     misc/gentoo/execap*
