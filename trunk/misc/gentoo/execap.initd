@@ -1,0 +1,19 @@
+#!/sbin/runscript
+# Copyright 1999-2011 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
+
+start() {
+        ebegin "Starting execap"
+        start-stop-daemon --start --exec /usr/bin/execap \
+            --pidfile /var/run/execap.pid \
+            -- -i ${INTERFACE} -D --pidfile /var/run/execap.pid ${EXECAP_OPTS}
+        eend $?
+}
+
+stop() {
+        ebegin "Stopping execap"
+        start-stop-daemon --stop --exec /usr/bin/execap \
+            --pidfile /var/run/execap.pid
+        eend $?
+}
