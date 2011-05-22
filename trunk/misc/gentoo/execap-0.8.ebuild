@@ -32,4 +32,7 @@ src_install() {
 	      INSTALL \
 	      LICENSE \
 	      COPYING || die "Failed to install execap docs"
+
+	newinitd "misc/gentoo/execap.initd" execap || die "Failed to install execap init script"
+	newconfd "misc/gentoo/execap.confd" execap || die "Failed to install execap confd file"
 }
