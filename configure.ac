@@ -1,5 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
+#
+# $Id$
 
 AC_PREREQ([2.65])
 AC_INIT([execap], [0.8], [https://code.google.com/p/execap/issues])
