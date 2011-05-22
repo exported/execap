@@ -1,3 +1,7 @@
+# execap Makefile.am source
+#
+# $Id$
+
 AUTOMAKE_OPTIONS = foreign
 
 #CFLAGS = -Wall -march=native -O3 -DEXECAPVER="\"$(VERSION)\"" -DOLDPCAP=$(OLDPCAP)
