@@ -1,0 +1,8 @@
+# /etc/conf.d/execap: config file for /etc/init.d/execap
+
+# The interface to sniff for executables
+INTERFACE="eth0"
+
+# see man pages for execap or run `execap --help`
+# for valid options
+#EXECAP_OPTS=""
